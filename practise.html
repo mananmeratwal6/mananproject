@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Scroll-driven Animations: Cover Flow: Multiple Elements</title>
+
+	<!-- Polyfill -->
+	<script src="/shared/third_party/polyfill/scroll-timeline.js"></script>
+
+	<!-- Popover Polyfill -->
+	<script src="/shared/third_party/popover/popover.iife.min.js" type="module"></script>
+
+	<!-- Shared styles and scripts, applied to each page -->
+	<link rel="stylesheet" href="/shared/styles.css">
+	<script src="/shared/scripts.js"></script>
+
+	<!-- Page specific styles. The code for the scroll-driven animations is kept in a local style block for your reading convenience -->
+	<link rel="stylesheet" href="../shared/styles.css">
+	<style>
+		@layer demo.base, demo.components;
+
+		/* Animation bumps up the z-index, to make sure it’s on top */
+		@keyframes adjust-z-index {
+			0% {
+				z-index: 1;
+			}
+			50% {
+				z-index: 100; /* When at the center, be on top */
+			}
+			100% {
+				z-index: 1;
+			}
+		}
+
+		/* Animation that rotates the cover */
+		@keyframes rotate-cover {
+			0% {
+				transform: translateX(-100%) rotateY(-45deg);
+			}
+			35% {
+				transform: translateX(0) rotateY(-45deg);
+			}
+			50% {
+				transform: rotateY(0deg) translateZ(1em) scale(1.5);
+			}
+			65% {
+				transform: translateX(0) rotateY(45deg);
+			}
+			100% {
+				transform: translateX(100%) rotateY(45deg);
+			}
+		}
+
+		.cards li {
+			/* Track this element as it intersects the scrollport */
+			view-timeline-name: --li-in-and-out-of-view;
+			view-timeline-axis: inline;
+
+			/* Link an animation to the established view-timeline and have it run during the contain phase */
+			animation: linear adjust-z-index both;
+			animation-timeline: --li-in-and-out-of-view;
+
+			/* Make the 3D stuff work… */
+			perspective: 40em;
+
+			position: relative;
+			z-index: 1;
+			will-change: z-index;
+
+			user-select: none;
+		}
+
+		.cards li > img {
+			/* Link an animation to the established view-timeline (of the parent li) and have it run during the contain phase */
+			animation: linear rotate-cover both;
+			animation-timeline: --li-in-and-out-of-view;
+
+			/* Prevent FOUC */
+			transform: translateX(-100%) rotateY(-45deg);
+
+			will-change: transform;
+		}
+
+		/* Animation that rotates the cover */
+		@keyframes rotate-cover--mt {
+			0% {
+				transform: translateX(-100%) rotateY(-45deg);
+			}
+			35% {
+				transform: translateX(0) rotateY(-45deg);
+			}
+			50% {
+				transform: rotateY(0deg) translateZ(1em) scale(1.5);
+			}
+			65% {
+				transform: translateX(0) rotateY(45deg);
+			}
+			100% {
+				transform: translateX(100%) rotateY(45deg);
+			}
+		}
+		#controls:has(#force-main-thread:checked) ~ .cards li > img {
+			animation-name: rotate-cover--mt;
+		}
+
+		.is-embed #controls {
+			display: none;
+		}
+	</style>
+
+	<!-- Page specific scripts -->
+	<script src="../shared/scripts.js" type="module"></script>
+</head>
+
+<body>
+	<div id="controls">
+		<label><input type="checkbox" id="scroll-snapping" checked /> Enable Scroll Snapping</label>
+		<label><input type="checkbox" id="debug" /> Show Debug Outlines</label>
+		<label><input type="checkbox" id="force-main-thread" /> Force Main Thread Animation</label>
+		<label><input type="checkbox" id="jank"> Add Jank</label>
+	</div>
+
+	<!-- metabox -->
+	<div id="metabox">
+		<button id="version-selector" popovertarget="version-selector-popover" data-activeversion="1/2" data-activelang="css">🔀</button>
+		<div id="version-selector-popover" popover anchor="version-selector">
+		  <h1>Version selector</h1>
+		  <p>This demo has several versions:</p>
+		  <ol>
+			<li data-lang="css" data-selected><a href="/demos/cover-flow/css/">CSS Version</a></li>
+			<li data-lang="js"><a href="/demos/cover-flow/waapi/">JavaScript Version</a></li>
+		  </ol>
+		</div>
+		<a class="button" href="/" title="To index">🏠</a>
+		<button id="infobox-toggle" title="Show Information about this demo">ℹ️</button>
+		<dialog id="infobox">
+			<form method="dialog"><button id="infobox-close" tabindex="0" title="Close dialog">❌</button></form>
+			<h1>About this demo</h1>
+			<p>This demo is a recreation of the infamous <a href="https://en.wikipedia.org/wiki/Cover_Flow" target="_top">Cover Flow UI</a>, once featured by Apple Inc. in iTunes for visually flipping through album artwork.</p>
+			<p>Each album cover has a View Timeline attached, driving an animation to rotate the cover sideways when offscreen and have it facing forwards when at the center of the scroller. </p>
+			<p>The album covers are from albums all released on the wonderful <a href="https://locirecords.com/" target="_top">Loci Records</a> record label.</p>
+
+			<h2>The Code / Explanation</h2>
+
+			<h3>Base layout</h3>
+			<p>The list of covers is presented in an unordered list, with each list item containing an image of the cover.</p>
+			<pre><code>&lt;ul class=&quot;cards&quot;&gt;
+	&lt;li&gt;
+		&lt;img src=&quot;https://example.org/cover1.jpg&quot;
+				width=&quot;600&quot; height=&quot;600&quot; alt=&quot;&mldr;&quot; /&gt;
+	&lt;/li&gt;
+	&lt;li&gt;
+		&lt;img src=&quot;https://example.org/cover2.jpg&quot;
+				width=&quot;600&quot; height=&quot;600&quot; alt=&quot;&mldr;&quot; /&gt;
+	&lt;/li&gt;
+	&mldr;
+	&lt;li&gt;
+		&lt;img src=&quot;https://example.org/cover3.jpg&quot;
+				width=&quot;600&quot; height=&quot;600&quot; alt=&quot;&mldr;&quot; /&gt;
+	&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+
+			<p>Using CSS, the albums are on one line and the container is made scrollable</p>
+			<pre><code>.cards {
+	list-style: none;
+	white-space: nowrap;
+	…
+	max-width: calc(var(--cover-size) * 6);
+	overflow: scroll;
+}
+
+.cards li {
+	display: inline-block;
+	width: var(--cover-size);
+	aspect-ratio: 1;
+}</code></pre>
+
+			<p>To always have one album cover centered, CSS Scroll Snapping is used.</p>
+
+			<pre><code>.cards {
+	scroll-snap-type: x mandatory;
+}
+
+.cards li {
+	scroll-snap-align: center;
+}</code></pre>
+
+			<p>The album reflections are also done using CSS.</p>
+
+			<pre><code>.cards li img {
+	width: 100%;
+	height: auto;
+
+	-webkit-box-reflect: below 0.5em linear-gradient(rgb(0 0 0 / 0), rgb(0 0 0 / 0.25));
+}</code></pre>
+
+			<h3>Scroll-driven animations</h3>
+
+			<p>There are two scroll-driven animations on each list item, to power the effect</p>
+
+			<ol>
+				<li>An animation on the <code>li</code> elements, changing the <code>z-index</code></li>
+				<li>An animation on the <code>img</code> elements, rotating them in 3D.</li>
+			</ol>
+
+			<p>The main driver for both animations is a View Timeline on each list item, tracking it for the entirety of the <code>cover</code> range. That way, elements are tracked from entry (0%) to exit (100%). The 50% mark indicates when the element is at the center of its scroller.</p>
+
+			<pre><code>.cards li {
+	/* Track this element as it intersects the scrollport */
+	view-timeline-name: --li-in-and-out-of-view;
+	view-timeline-axis: inline;
+}</code></pre>
+
+			<p>The keyframes for the <code>li</code> elements make it so that at halfway in the scroller, that cover is topmost.</p>
+
+			<pre><code>@keyframes adjust-z-index {
+	0% {
+		z-index: 1;
+	}
+	50% {
+		z-index: 100; /* When at the center, be on top */
+	}
+	100% {
+		z-index: 1;
+	}
+}</code></pre>
+
+			<p>The keyframes for the <code>img</code> work in similar fashion. At the 50% mark, the cover faces forwards. On the other sides, it is rotated sideways.</p>
+
+			<pre><code>@keyframes rotate-cover {
+	0% {
+		transform: translateX(-100%) rotateY(-45deg);
+	}
+	35% {
+		transform: translateX(0) rotateY(-45deg);
+	}
+	50% {
+		transform: rotateY(0deg) translateZ(1em) scale(1.5);
+	}
+	65% {
+		transform: translateX(0) rotateY(45deg);
+	}
+	100% {
+		transform: translateX(100%) rotateY(45deg);
+	}
+}</code></pre>
+
+			<p>Linking everything up, the CSS is this:</p>
+
+			<pre><code>.cards li {
+	/* Link an animation to the established view-timeline and have it run during the contain phase */
+	animation: linear adjust-z-index both;
+	animation-timeline: --li-in-and-out-of-view;
+
+	/* Make the 3D stuff work… */
+	perspective: 40em;
+}
+
+.cards li > img {
+	/* Link an animation to the established view-timeline (of the parent li) and have it run during the contain phase */
+	animation: linear rotate-cover both;
+	animation-timeline: --li-in-and-out-of-view;
+}</code></pre>
+
+			<p>Because no <code>animation-range</code> is set, the <code>cover</code> range is used.</p>
+
+			<p>⚠️ Note that key here is that the transforms happen on the <code>img</code>s, not the <code>li</code>s. If the <code>li</code> elements were transformed, the total scroll distance of the scroller would be affected, causing a flickering effect. By rotating the <code>img</code>s inside the <code>li</code>s, the size of the <code>li</code> elements – and thus the total scroll distance – remain unchanged.</p>
+		</dialog>
+	</div>
+
+	<ul class="cards">
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Front-1024x1024.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--A-Thousand-Clouds-Front-Cover-1024x1024.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Odd-World-EP-SMALL-1024x1024.png" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Forest-Blue-Pre-LR-1024x1024.png" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--MOM-Remixes-1024x1024.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--ALONE-TOGETHER-remix-V71-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Nature-Therapy-Pre-LR-550x550.png" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Deep-Dive-Ambient-Edits-V8-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Alpine-Koresma-x-Aroth-Artwork-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Out-Of-the-Dark-Cover-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--2020-06-07-Marley-Carroll-Single-Blue-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Deep-Dive-EP-Cover-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Blackrose-Cover-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--FW-Imagine-Gold-Remixes2-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--We-Are-COVER-MAIN-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Bath-House-Flat-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Pronoia-JPG-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Lapa9Theory-Cracking-Stores-no-Loci-logo-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--EMANCIPATOR_MOM_AlbumCover-2000px-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--MURGE-ep-cvr-3000x3000-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--Emancipator_Laybrinth-ART-01-4000x4000-at-300dpi-550x550.jpg" width="1200" height="1200" />
+		</li>
+		<li>
+			<img draggable="false" src="https://assets.codepen.io/89905/coverflow--cover-550x550.jpg" width="1200" height="1200" />
+		</li>
+	</ul>
+
+	<div class="warning">
+		<p>⚠️ Your browser does not support Scroll-Linked Animations. To cater for this, a <a href="https://github.com/flackr/scroll-timeline">polyfill</a> has been loaded.</p>
+	</div>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"rayId":"8a37edeb7cb6a8eb","version":"2024.6.1","r":1,"token":"4f175b1ac3204b9ca216125bb4bd6018","serverTiming":{}}' crossorigin="anonymous"></script>
+</body>
+
+</html>
